@@ -22,6 +22,26 @@ def legislators_by_zipcode(zipcode)
   end
 end
 
+def create_thank_you_letter(id, form_letter)
+  Dir.mkdir('output') unless Dir.exist?('output')
+
+  file_path = "output/thanks_#{id}.html"
+  File.open(file_path, 'w') do |file|
+    file.puts form_letter
+  end
+end
+
+def clean_phone(phone)
+  is_number = -> (string) { string.to_i.to_s == string }
+  cleaned_phone = phone.split("").filter(&is_number).join
+
+  return cleaned_phone if cleaned_phone.length == 10
+  if cleaned_phone.length == 11 && cleaned_phone[0] == '1'
+    return cleaned_phone[1..]
+  end
+  nil
+end
+
 puts 'Event Manager Initialized!'
 
 contents = CSV.open(
@@ -36,15 +56,12 @@ erb_template = ERB.new template_letter
 contents.each do |row|
   id = row[0]
   name = row[:first_name]
+  phone = clean_phone(row[:homephone])
   zipcode = clean_zipcode(row[:zipcode])
 
   legislators = legislators_by_zipcode(zipcode)
+
   form_letter = erb_template.result(binding)
 
-  Dir.mkdir('output') unless Dir.exist?('output')
-
-  file_path = "output/thanks_#{id}.html"
-  File.open(file_path, 'w') do |file|
-    file.puts form_letter
-  end
+  create_thank_you_letter(id, form_letter)
 end
