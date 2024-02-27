@@ -1,6 +1,7 @@
 require 'csv'
 require 'google/apis/civicinfo_v2'
 require 'erb'
+require 'time'
 
 def clean_zipcode(zipcode)
   zipcode.to_s.rjust(5, '0')[0..4]
@@ -22,7 +23,7 @@ def legislators_by_zipcode(zipcode)
   end
 end
 
-def create_thank_you_letter(id, form_letter)
+def save_thank_you_letter(id, form_letter)
   Dir.mkdir('output') unless Dir.exist?('output')
 
   file_path = "output/thanks_#{id}.html"
@@ -42,6 +43,30 @@ def clean_phone(phone)
   nil
 end
 
+def create_thank_you_letter(contents, erb_template)
+  contents.each do |row|
+    p row
+    id = row[0]
+    name = row[:first_name]
+    phone = clean_phone(row[:homephone])
+    zipcode = clean_zipcode(row[:zipcode])
+
+    legislators = legislators_by_zipcode(zipcode)
+
+    form_letter = erb_template.result(binding)
+
+    save_thank_you_letter(id, form_letter)
+  end
+end
+
+def find_peak_registration_hours(contents)
+  contents.reduce({}) do |acc, row|
+    date = Time.strptime(row[:regdate], "%m/%d/%Y %H:%M") { |y| y + 2000 }
+    acc[date.hour] = acc[date.hour].to_i + 1
+    acc
+  end
+end
+
 puts 'Event Manager Initialized!'
 
 contents = CSV.open(
@@ -53,15 +78,5 @@ contents = CSV.open(
 template_letter = File.read('form_letter.erb')
 erb_template = ERB.new template_letter
 
-contents.each do |row|
-  id = row[0]
-  name = row[:first_name]
-  phone = clean_phone(row[:homephone])
-  zipcode = clean_zipcode(row[:zipcode])
-
-  legislators = legislators_by_zipcode(zipcode)
-
-  form_letter = erb_template.result(binding)
-
-  create_thank_you_letter(id, form_letter)
-end
+# create_thank_you_letter(contents, erb_template)
+p find_peak_registration_hours(contents)
