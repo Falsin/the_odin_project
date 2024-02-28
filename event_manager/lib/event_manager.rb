@@ -2,6 +2,7 @@ require 'csv'
 require 'google/apis/civicinfo_v2'
 require 'erb'
 require 'time'
+require 'date'
 
 def clean_zipcode(zipcode)
   zipcode.to_s.rjust(5, '0')[0..4]
@@ -67,6 +68,17 @@ def find_peak_registration_hours(contents)
   end
 end
 
+def find_peak_registration_days(contents)
+  contents.reduce({}) do |acc, row|
+    transformed_date = Time.strptime(row[:regdate], "%m/%d/%Y %H:%M") { |y| y + 2000 }
+    acc[transformed_date.strftime("%A")] = {
+      index_day: transformed_date.wday,
+      count: acc.dig(transformed_date.strftime("%A"), :count).to_i + 1
+    }
+    acc
+  end
+end
+
 puts 'Event Manager Initialized!'
 
 contents = CSV.open(
@@ -79,4 +91,5 @@ template_letter = File.read('form_letter.erb')
 erb_template = ERB.new template_letter
 
 # create_thank_you_letter(contents, erb_template)
-p find_peak_registration_hours(contents)
+# p find_peak_registration_hours(contents)
+p find_peak_registration_days(contents)
